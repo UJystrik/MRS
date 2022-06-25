@@ -28,117 +28,66 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('publish on Strapi');
 	});
 
-	function Request (url: string, authToken: string, callback: any){
-		const request = require("request");
-		var result: any;
-		request({
-			url: url,
-			headers: {
-			   'Authorization': 'Bearer ' + authToken
-			},
-			rejectUnauthorized: false
-		  }, function(err: any, res: { body: any; }) {
-				if(err) {
-					console.error(err);
-				} else {
-					//console.log(res.body)
-					callback(res.body);
-				}		  
-		});
-	};
-	function callback(res: any){
-		console.log(res);
-	}
-
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	function PullJsonInFile(path:string, filename:string, data: string){
 		if (fs.existsSync(path + filename)) {
-			vscode.window.showInformationMessage('A file with that name already exists');
+			console.log(`A file with that name ${path + filename} already exists`);
 		} else {
 			fs.writeFile(path + filename, data, function(err){
 				if(err){
 					vscode.window.showInformationMessage('It is not possible to save the file in this path');
 				}
-				else{
-					//vscode.window.showInformationMessage('pull json');
-				}
 			});					
 		}		
 	}
 
-	const disposable3 = vscode.commands.registerCommand('mrsc.pull_json', async () => {	
+	const disposable3 = vscode.commands.registerCommand('mrsc.pull_json',  () => {	
 		const path = require('path');
         const request = require("request");
-		var url = '';
+		var urlForRequest = '';
+		var filePathForSave = '';
 		var authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjU2MDA2NjkxLCJleHAiOjE2NTg1OTg2OTF9.91s4PbON0asQRw5GvX7L6acdiD4VXg7xJtjK865RW9Y';
-		var filePathForSave = path.join(__dirname, '../') + "src/forms";
-		filePathForSave = filePathForSave + "/";		
-        var collectionTypes = ['form', 'hook'];
-		collectionTypes.forEach(async function(collectrionType: any){
-			var { data } = await axios.get('http://localhost:1337/content-manager/explorer/application::' + collectrionType + '.' + collectrionType, {
-  				headers: {
-    				Authorization: 'Bearer ' + authToken,
-  				},
-		    });
-			await Promise.all(data);
-			//console.log(data);
-			if(data.length !== 0){
-				filePathForSave = path.join(__dirname, '../') + "src/" + collectrionType + 's';
-				if (!fs.existsSync(filePathForSave)){
-					fs.mkdirSync(filePathForSave);
-				}
-				filePathForSave = filePathForSave + "/";
-			}
-			data.forEach(function(item: any, i: any, data: any) {	
-				url = 'http://localhost:1337/'+ collectrionType + 's/' + item.id;	
-				request({
-					url: url,
-					headers: {
-			   			'Authorization': 'Bearer ' + authToken
-					},
-					rejectUnauthorized: false
-		  		}, function(err: any, res: { body: any; }) {
-					if(err) {
-						console.error(err);
-					} else {
-						console.log(res.body);
-						PullJsonInFile(filePathForSave, item.id + ".json", res.body);
-					}		  
-				});
+		var hostPath = 'http://localhost:1337/';		
+        var collectionTypes = ['form', 'hook', 'calendar-event'];
+		var data: any;
+		filePathForSave = path.join(__dirname, '../');
+		collectionTypes.forEach(function(collectrionType: any){
+			request({
+				url: hostPath + 'content-manager/explorer/application::' + collectrionType + '.' + collectrionType,
+				headers: {
+					   // eslint-disable-next-line @typescript-eslint/naming-convention
+					   'Authorization': 'Bearer ' + authToken
+				},
+				rejectUnauthorized: false
+			}, function(err: any, res: { body: any; }) {
+				if(err) {
+					console.error(err);
+				} else {
+					data = JSON.parse(res.body);
+					if(data.length !== 0){
+						if (!fs.existsSync(filePathForSave + 'src/' + collectrionType + 's')){
+							fs.mkdirSync(filePathForSave + 'src/' + collectrionType + 's');
+						}
+						data.forEach(function(item: any) {	
+							request({
+								url: hostPath + collectrionType + 's/' + item.id,
+								headers: {
+									// eslint-disable-next-line @typescript-eslint/naming-convention
+									'Authorization': 'Bearer ' + authToken
+								},
+								rejectUnauthorized: false
+							}, function(err: any, res: { body: any; }) {
+								if(err) {
+									console.error(err);
+								} else {
+									PullJsonInFile(filePathForSave + "src/" + collectrionType + 's/', item.id + ".json", JSON.stringify(JSON.parse(res.body), null, '\t'));
+								}		  
+							});
+						});
+					}
+				}		  
 			});
 		});
-		/*collectionTypes.forEach(async function(collectrionType) {
-			var { data } = await axios.get('http://localhost:1337/content-manager/explorer/application::' + collectrionType + '.' + collectrionType, {
-  				headers: {
-    				Authorization: 'Bearer ' + authToken,
-  				},
-		    });
-			//console.log(data);
-			if(data.length !== 0){
-				filePathForSave = path.join(__dirname, '../') + "src/" + collectrionType + 's';
-				if (!fs.existsSync(filePathForSave)){
-					fs.mkdirSync(filePathForSave);
-				}
-				filePathForSave = filePathForSave + "/";
-			}
-			data.forEach(function(item: any, i: any, data: any) {	
-				url = 'http://localhost:1337/'+ collectrionType + 's/' + item.id;	
-				request({
-					url: url,
-					headers: {
-			   			'Authorization': 'Bearer ' + authToken
-					},
-					rejectUnauthorized: false
-		  		}, function(err: any, res: { body: any; }) {
-					if(err) {
-						console.error(err);
-					} else {
-						console.log(res.body);
-						PullJsonInFile(filePathForSave, item.id + ".json", res.body);
-					}		  
-				});
-			});
-		});*/
-		
 	});
 	context.subscriptions.push(disposable, disposable1, disposable2, disposable3);
 }
