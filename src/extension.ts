@@ -2,11 +2,110 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import axios from 'axios';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { Console } from 'console';
+import * as cheerio from 'cheerio';
 
+function GetSpecFromString(str: string){
+	var pos = str.indexOf('spec:');
+	var retStr = '';
+	var brackets = 0;
+	if(pos === -1){
+		return 'error';
+	}
+	for(pos; pos !== str.length && str[pos] !== '{'; pos++){};
+	if(pos === str.length){
+		return 'error';
+	}
+	brackets = 1;
+	retStr = retStr + str[pos];
+	pos = pos + 1;
+	for(pos; pos !== str.length && brackets !== 0; pos++){
+		retStr = retStr + str[pos];
+		if(str[pos] === '{'){
+			brackets = brackets + 1;
+		} else if(str[pos] === '}'){
+			brackets = brackets - 1;
+		}
+	};
+	return retStr;
+}
+
+function IsInJson(json: any, str: string){
+	for(var elem in json){
+		if(elem === str){
+			return true;
+		}
+	}
+	return false;
+}
+
+function PullJsonInFile(path: string, filename: string, data: string){
+	if (fs.existsSync(path + filename)) {
+		console.log(`A file with that name ${path + filename} already exists`);
+	} else {
+		fs.writeFile(path + filename, data, function(err){
+			if(err){
+				vscode.window.showInformationMessage('It is not possible to save the file in this path');
+			}
+		});					
+	}		
+}
+
+function PullInFiles(collectionTypes:any, hostPath: string, authToken: string, filePathForSave: string){
+	const request = require("request");
+	var data: any;
+
+	if (!fs.existsSync(filePathForSave + 'strapi-data')){
+		fs.mkdirSync(filePathForSave + 'strapi-data');
+	}
+	filePathForSave = filePathForSave + 'strapi-data/';
+	collectionTypes.forEach(function(collectrionType: any){
+		let urlWithCollectionType = '';
+		if(collectrionType === 'tag'){
+			urlWithCollectionType = 'application::' + collectrionType + 's.' + collectrionType + 's';
+		} else if(collectrionType === 'user'){
+			urlWithCollectionType = 'plugins::' + 'users-permissions.user';
+		} else {
+			urlWithCollectionType = 'application::' + collectrionType + '.' + collectrionType;
+		}
+		request({
+			url: hostPath + 'content-manager/explorer/' + urlWithCollectionType,
+			headers: {
+				   'Authorization': 'Bearer ' + authToken
+			},
+			rejectUnauthorized: false
+		}, function(err: any, res: { body: any; }) {
+			if(err) {
+				console.error(err);
+			} else {
+				data = JSON.parse(res.body);
+				if(data.length !== 0){
+					if(collectrionType === 'tags'){
+						collectrionType = collectrionType.substring(0, collectrionType.length - 1);
+					}
+					if (!fs.existsSync(filePathForSave + collectrionType + 's')){
+						fs.mkdirSync(filePathForSave + collectrionType + 's');
+					}
+					data.forEach(function(item: any) {	
+						request({
+							url: hostPath + collectrionType + 's/' + item.id,
+							headers: {
+								// eslint-disable-next-line @typescript-eslint/naming-convention
+								'Authorization': 'Bearer ' + authToken
+							},
+							rejectUnauthorized: false
+						}, function(err: any, res: { body: any; }) {
+							if(err) {
+								console.error(err);
+							} else {
+								PullJsonInFile(filePathForSave + collectrionType + 's/', item.id + '.json', JSON.stringify(JSON.parse(res.body), null, '\t'));
+							}		  
+						});
+					});
+				}
+			}		  
+		});
+	});
+}
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -28,72 +127,43 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('publish on Strapi');
 	});
 
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	function PullJsonInFile(path:string, filename:string, data: string){
-		if (fs.existsSync(path + filename)) {
-			console.log(`A file with that name ${path + filename} already exists`);
-		} else {
-			fs.writeFile(path + filename, data, function(err){
-				if(err){
-					vscode.window.showInformationMessage('It is not possible to save the file in this path');
-				}
-			});					
-		}		
-	}
-
 	const disposable3 = vscode.commands.registerCommand('mrsc.pull_json',  () => {	
 		const path = require('path');
-        const request = require("request");
-		var urlForRequest = '';
-		var filePathForSave = '';
+		const needle = require('needle');
+		const sortJson = require('sort-json');
+		var filePathForSave = path.join(__dirname, '../') + 'src/';
 		var authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjU2MDA2NjkxLCJleHAiOjE2NTg1OTg2OTF9.91s4PbON0asQRw5GvX7L6acdiD4VXg7xJtjK865RW9Y';
 		var hostPath = 'http://localhost:1337/';		
-        var collectionTypes = ['form', 'hook', 'calendar-event'];
-		var data: any;
-		filePathForSave = path.join(__dirname, '../');
-		collectionTypes.forEach(function(collectrionType: any){
-			request({
-				url: hostPath + 'content-manager/explorer/application::' + collectrionType + '.' + collectrionType,
-				headers: {
-					   // eslint-disable-next-line @typescript-eslint/naming-convention
-					   'Authorization': 'Bearer ' + authToken
-				},
-				rejectUnauthorized: false
-			}, function(err: any, res: { body: any; }) {
-				if(err) {
-					console.error(err);
-				} else {
-					data = JSON.parse(res.body);
-					if(data.length !== 0){
-						if (!fs.existsSync(filePathForSave + 'src/' + collectrionType + 's')){
-							fs.mkdirSync(filePathForSave + 'src/' + collectrionType + 's');
-						}
-						data.forEach(function(item: any) {	
-							request({
-								url: hostPath + collectrionType + 's/' + item.id,
-								headers: {
-									// eslint-disable-next-line @typescript-eslint/naming-convention
-									'Authorization': 'Bearer ' + authToken
-								},
-								rejectUnauthorized: false
-							}, function(err: any, res: { body: any; }) {
-								if(err) {
-									console.error(err);
-								} else {
-									PullJsonInFile(filePathForSave + "src/" + collectrionType + 's/', item.id + ".json", JSON.stringify(JSON.parse(res.body), null, '\t'));
-								}		  
-							});
-						});
+        var collectionTypes = [''];
+		collectionTypes = [];	
+
+		needle.get(hostPath + 'documentation', function(err: any, response: { statusCode: number; body: any; }) {
+			if(err) {
+				console.error(err);
+			} else {
+				var $ = cheerio.load(response.body);
+				var scriptString = $('.custom-swagger-ui').text();
+				var spec = GetSpecFromString(scriptString);
+				if(spec !== 'error'){
+					var apiPaths = JSON.parse(spec).paths;
+					apiPaths = sortJson(apiPaths, { ignoreCase: true });
+					var pathName = ' ';
+					for(var elem in apiPaths){
+						if(apiPaths[elem].get !== undefined && IsInJson(apiPaths, elem + '/{id}')){
+							pathName = elem;
+							pathName = pathName.substring(pathName.length - 1, 1);
+							collectionTypes.push(pathName);
+							pathName = elem;
+						}				
 					}
-				}		  
-			});
+					PullInFiles(collectionTypes, hostPath, authToken, filePathForSave);
+				}
+			}	
 		});
+		vscode.window.showInformationMessage("pull json's from Strapi");
 	});
 	context.subscriptions.push(disposable, disposable1, disposable2, disposable3);
 }
-
-
-
 
 // this method is called when your extension is deactivated
 export function deactivate() {}
