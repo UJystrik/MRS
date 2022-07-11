@@ -4,6 +4,9 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as cheerio from 'cheerio';
 
+const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjU2MDA2NjkxLCJleHAiOjE2NTg1OTg2OTF9.91s4PbON0asQRw5GvX7L6acdiD4VXg7xJtjK865RW9Y';
+const hostPath = 'http://localhost:1337/';
+
 function GetSpecFromString(str: string){
 	var pos = str.indexOf('spec:');
 	var retStr = '';
@@ -72,7 +75,6 @@ function PullInFiles(collectionTypes:any, hostPath: string, authToken: string, f
 			headers: {
 				   'Authorization': 'Bearer ' + authToken
 			},
-			rejectUnauthorized: false
 		}, function(err: any, res: { body: any; }) {
 			if(err) {
 				console.error(err);
@@ -89,7 +91,6 @@ function PullInFiles(collectionTypes:any, hostPath: string, authToken: string, f
 						request({
 							url: hostPath + collectrionType + 's/' + item.id,
 							headers: {
-								// eslint-disable-next-line @typescript-eslint/naming-convention
 								'Authorization': 'Bearer ' + authToken
 							},
 							rejectUnauthorized: false
@@ -104,6 +105,55 @@ function PullInFiles(collectionTypes:any, hostPath: string, authToken: string, f
 				}
 			}		  
 		});
+	});
+}
+
+function PublishInStrapi(){
+	const path = require('path');
+	const request = require("request");
+	var filePathForSave = path.join(__dirname, '../') + 'src/strapi-data/';
+	const parametersForDelete = ["createdDate", "updatedDate", "published_at"];
+
+	fs.readdir(filePathForSave, (err, dirs) => {
+  		dirs.forEach(dir => {
+			fs.readdir(filePathForSave + dir, (err, files) => {
+				files.forEach(file => {
+					let elementId = file.split('.')[0];
+					let fileContent = JSON.parse(fs.readFileSync(filePathForSave + dir + '/' + file, "utf8"));
+					parametersForDelete.forEach(function(parameter: any) {
+						delete fileContent[parameter];
+					});	
+					request.get({
+						url: hostPath  + dir + '/' + elementId,
+						headers: {
+							   'Authorization': 'Bearer ' + authToken
+						}
+					}, function(err: any, res: { body: any; }) {
+						if(res.body === 'Not Found'){
+							request.post({
+								url: hostPath  + dir,
+								headers: {
+									   'Authorization': 'Bearer ' + authToken
+								},
+								json: true,						
+								body: fileContent,
+							}, function(err: any, res: { body: any; }) {
+							});
+						} else {
+							request.put({
+								url: hostPath  + dir + '/' + elementId,
+								headers: {
+									   'Authorization': 'Bearer ' + authToken
+								},
+								json: true,						
+								body: fileContent,
+							}, function(err: any, res: { body: any; }) {
+							});
+						}					
+					});							
+				});
+		  	});
+  		});
 	});
 }
 
@@ -124,6 +174,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	
 	const disposable2 = vscode.commands.registerCommand('mrsc.publish_strapi', () => {
+		PublishInStrapi();
 		vscode.window.showInformationMessage('publish on Strapi');
 	});
 
@@ -131,9 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const path = require('path');
 		const needle = require('needle');
 		const sortJson = require('sort-json');
-		var filePathForSave = path.join(__dirname, '../') + 'src/';
-		var authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjU2MDA2NjkxLCJleHAiOjE2NTg1OTg2OTF9.91s4PbON0asQRw5GvX7L6acdiD4VXg7xJtjK865RW9Y';
-		var hostPath = 'http://localhost:1337/';		
+		var filePathForSave = path.join(__dirname, '../') + 'src/';		
         var collectionTypes = [''];
 		collectionTypes = [];	
 
