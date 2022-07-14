@@ -6,6 +6,8 @@ import * as cheerio from 'cheerio';
 
 const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjU2MDA2NjkxLCJleHAiOjE2NTg1OTg2OTF9.91s4PbON0asQRw5GvX7L6acdiD4VXg7xJtjK865RW9Y';
 const hostPath = 'http://localhost:1337/';
+const authHead = {Authorization: 'Bearer ' + authToken};
+const authorization = authHead.Authorization;
 
 function GetSpecFromString(str: string){
 	var pos = str.indexOf('spec:');
@@ -73,7 +75,7 @@ function PullInFiles(collectionTypes:any, hostPath: string, authToken: string, f
 		request({
 			url: hostPath + 'content-manager/explorer/' + urlWithCollectionType,
 			headers: {
-				   'Authorization': 'Bearer ' + authToken
+				authorization
 			},
 		}, function(err: any, res: { body: any; }) {
 			if(err) {
@@ -91,7 +93,7 @@ function PullInFiles(collectionTypes:any, hostPath: string, authToken: string, f
 						request({
 							url: hostPath + collectrionType + 's/' + item.id,
 							headers: {
-								'Authorization': 'Bearer ' + authToken
+								authorization
 							},
 							rejectUnauthorized: false
 						}, function(err: any, res: { body: any; }) {
@@ -113,6 +115,7 @@ function PublishInStrapi(){
 	const request = require("request");
 	var filePathForSave = path.join(__dirname, '../') + 'src/strapi-data/';
 	const parametersForDelete = ["createdDate", "updatedDate", "published_at"];
+	
 
 	fs.readdir(filePathForSave, (err, dirs) => {
   		dirs.forEach(dir => {
@@ -126,14 +129,14 @@ function PublishInStrapi(){
 					request.get({
 						url: hostPath  + dir + '/' + elementId,
 						headers: {
-							   'Authorization': 'Bearer ' + authToken
+							authorization
 						}
 					}, function(err: any, res: { body: any; }) {
 						if(res.body === 'Not Found'){
 							request.post({
 								url: hostPath  + dir,
 								headers: {
-									   'Authorization': 'Bearer ' + authToken
+									authorization
 								},
 								json: true,						
 								body: fileContent,
@@ -143,7 +146,7 @@ function PublishInStrapi(){
 							request.put({
 								url: hostPath  + dir + '/' + elementId,
 								headers: {
-									   'Authorization': 'Bearer ' + authToken
+									authorization
 								},
 								json: true,						
 								body: fileContent,
