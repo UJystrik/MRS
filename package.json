@@ -79,6 +79,7 @@
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
         "@types/node": "14.x",
+        "@types/nodegit": "^0.27.10",
         "@types/vscode": "^1.67.0",
         "@types/wicg-file-system-access": "^2020.9.5",
         "@typescript-eslint/eslint-plugin": "^5.21.0",
@@ -95,14 +96,17 @@
     "dependencies": {
         "axios": "^0.27.2",
         "cheerio": "^1.0.0-rc.12",
+        "gift": "^0.10.2",
         "libxmljs": "^0.19.10",
         "mkdirp": "^0.5.6",
         "needle": "^1.6.0",
         "node-fetch": "^3.2.6",
         "node-gyp": "^9.0.0",
+        "nodegit": "^0.27.0",
         "osmosis": "^1.1.10",
         "qs": "^6.10.5",
         "request": "^2.88.2",
+        "simple-git": "^3.10.0",
         "sort-json": "^2.0.1"
     }
 }

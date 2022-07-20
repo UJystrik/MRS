@@ -1,8 +1,11 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as nodegit from 'nodegit';
+import { simpleGit, SimpleGit, SimpleGitOptions } from 'simple-git';
 import * as fs from 'fs';
 import * as cheerio from 'cheerio';
+import { getLatestInsidersMetadata } from '@vscode/test-electron/out/util';
 
 const authToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjU2MDA2NjkxLCJleHAiOjE2NTg1OTg2OTF9.91s4PbON0asQRw5GvX7L6acdiD4VXg7xJtjK865RW9Y';
 const hostPath = 'http://localhost:1337/';
@@ -172,7 +175,40 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Hello World from mrsc!');
 	});
 
-	const disposable1 = vscode.commands.registerCommand('mrsc.pull_strapi', () => {
+	const disposable1 = vscode.commands.registerCommand('mrsc.pull_strapi', async () => {
+		var Git = require("nodegit");
+		var mkdirp = require('mkdirp');
+
+		var repoPath = 'src/strapi-data/';
+		mkdirp.sync(repoPath);
+		const simpleGit = require('simple-git');
+		//console.log(repoPath);
+		
+		try {
+			const git: SimpleGit = simpleGit(repoPath, { binary: 'git' });
+			
+			await git.init();
+			await git.addRemote('origin', 'https://github.com/UJystrik/MRSDataApp.git');
+			
+		}
+		catch (e) {
+			console.log("Ошибка");
+			 /* handle all errors here */ }
+		//await git.init();
+		//await git.addRemote('origin', 'https://github.com/UJystrik/MRSDataApp.git')
+		//const git: SimpleGit = simpleGit(repoPath, { config: ['https://github.com/UJystrik/MRSDataApp.git'] });
+		//const path = require('path');
+		//const git = require('gift');
+		/*git.init(path.join(__dirname, '../') + 'src/strapi-data/', (err: any, _repo: any)=>{
+			
+			git.clone('https://github.com/UJystrik/MRSDataApp.git', path.join(__dirname, '../') + 'src/strapi-data/', 0, 'main', (err: any, _repo: any) =>{
+				var repo = _repo;
+				repo.add;
+				console.log(repo.remote_add('UJystrik', 'https://github.com/UJystrik/MRSDataApp.git', callback));
+				console.log(repo.remote_push('UJystrik', ['main']));
+			});
+		});
+		*/
 		vscode.window.showInformationMessage('pull from Strapi');	
 	});
 	
